@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réception des PDF</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+        .date-picker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type="date"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .pdf-list {
+            margin-top: 30px;
+        }
+        .pdf-item {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .pdf-item span {
+            font-size: 18px;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .actions a, .actions button {
+            padding: 8px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .actions a:hover, .actions button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Réception des PDF de Rapport</h1>
+
+        <div class="date-picker">
+            <label for="reportDate">Sélectionner la date :</label>
+            <input type="date" id="reportDate" name="reportDate">
+            <button id="fetchPdfButton">Rechercher les PDF</button>
+        </div>
+
+        <div id="pdfList" class="pdf-list">
+            <!-- Liste des PDF récupérés sera affichée ici -->
+        </div>
+    </div>
+
+    <!-- Import Firebase modules -->
+    <script type="module">
+        // Import des modules Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-database.js";
+        import { getStorage, ref as storageRef, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-storage.js";
+
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgrLBx_yB617KhpgRv0VGHGvIWf_w2pvM",
+            authDomain: "archive-371ec.firebaseapp.com",
+            projectId: "archive-371ec",
+            storageBucket: "archive-371ec.appspot.com",
+            messagingSenderId: "913144277477",
+            appId: "1:913144277477:web:3f26e18cfe5bae704d670c",
+            measurementId: "G-ZK7Z6T5J3C"
+        };
+
+        // Initialiser Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const storage = getStorage(app);
+
+        // Fonction pour récupérer et afficher les PDF à partir de Firebase en fonction de la date sélectionnée
+        document.getElementById('fetchPdfButton').addEventListener('click', () => {
+            const reportDate = document.getElementById('reportDate').value;
+            if (!reportDate) {
+                alert('Veuillez sélectionner une date.');
+                return;
+            }
+
+            // Référence à la base de données pour récupérer les PDF de la date sélectionnée
+            const reportRef = ref(database, 'pdf_reports/' + reportDate);
+            get(reportRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const reportData = snapshot.val();
+                    displayPdf(reportData);
+                } else {
+                    alert('Aucun PDF trouvé pour cette date.');
+                }
+            }).catch((error) => {
+                console.error('Erreur lors de la récupération des données :', error);
+            });
+        });
+
+        // Fonction pour afficher les PDF dans la liste
+        function displayPdf(reportData) {
+            const pdfList = document.getElementById('pdfList');
+            pdfList.innerHTML = '';  // Effacer la liste actuelle
+
+            const pdfItem = document.createElement('div');
+            pdfItem.className = 'pdf-item';
+
+            const pdfName = document.createElement('span');
+            pdfName.textContent = reportData.name;
+
+            // Actions : lire et télécharger
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'actions';
+
+            // Lien pour lire le PDF
+            const pdfReadLink = document.createElement('a');
+            pdfReadLink.href = reportData.url;
+            pdfReadLink.textContent = 'Lire le PDF';
+            pdfReadLink.target = '_blank';  // Ouvrir dans un nouvel onglet
+
+            // Lien pour télécharger le PDF
+            const pdfDownloadLink = document.createElement('a');
+            pdfDownloadLink.href = reportData.url;
+            pdfDownloadLink.textContent = 'Télécharger';
+            pdfDownloadLink.download = reportData.name;  // Forcer le téléchargement
+
+            actionsDiv.appendChild(pdfReadLink);
+            actionsDiv.appendChild(pdfDownloadLink);
+
+            pdfItem.appendChild(pdfName);
+            pdfItem.appendChild(actionsDiv);
+
+            pdfList.appendChild(pdfItem);
+        }
+    </script>
+</body>
+</html>
